@@ -15,9 +15,7 @@ nvbuf-memory-type=0
 [source0]
 enable=1
 type=3
-##uri=file:///opt/deepstream-yolo11/video.mp4
 uri=file:///opt/nvidia/deepstream/deepstream/samples/streams/sample_1080p_h264.mp4
-###uri=http://takemotopiano.aa1.netvolante.jp:8190/nphMotionJpeg?Resolution=640x480&Quality=Standard&Framerate=30
 num-sources=1
 gpu-id=0
 cudadec-memtype=0
@@ -28,18 +26,7 @@ type=2
 sync=0
 gpu-id=0
 nvbuf-memory-type=0
-##########################
-#enable=1
-#type=1
-#sync=0
-##gpu-id=0
-##nvbuf-memory-type=0
-###########################
-#enable=1
-#type=3
-#container=1
-#codec=1
-#output-file=/opt/deepstream-yolo11/output.mp4
+
 
 [osd]
 enable=1
