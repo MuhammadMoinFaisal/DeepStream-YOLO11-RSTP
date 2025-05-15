@@ -173,15 +173,6 @@ config-file=config_infer_primary_yolo11.txt
 mkdir predictions
 ```
 ### RTSP Stream Ingestion
-### Edit the deepstream_app_config file
-```
-uri=http://takemotopiano.aa1.netvolante.jp:8190/nphMotionJpeg?Resolution=640x480&Quality=Standard&Framerate=30
-```
-### Testing the model
-```
-deepstream-app -c deepstream_app_config.txt
-```
-
 ### Dynamic RTSP Stream Configuration without Restart/ Run the Flask API
 ```
 python3 run_deepstream_flask_database.py
