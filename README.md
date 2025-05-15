@@ -172,144 +172,35 @@ config-file=config_infer_primary_yolo11.txt
 ```
 mkdir predictions
 ```
-
+### RTSP Stream Ingestion
+### Edit the deepstream_app_config file
+```
+uri=http://takemotopiano.aa1.netvolante.jp:8190/nphMotionJpeg?Resolution=640x480&Quality=Standard&Framerate=30
+```
 ### Testing the model
-
 ```
 deepstream-app -c deepstream_app_config.txt
 ```
 
-### Multiple Streams Setup
-To set up multiple streams under a single deepstream application, you can do the following changes to the deepstream_app_config.txt file
-
-* Change the rows and columns to build a grid display according to the number of streams you want to have. For example, for 4 streams, we can add 2 rows and 2 columns.
+### Dynamic RTSP Stream Configuration without Restart/ Run the Flask API
 ```
-[tiled-display]
-rows=2
-columns=2
+python3 run_deepstream_flask_database.py
 ```
-* Set num-sources=4 and add uri of all the 4 streams
-```
-[source0]
-enable=1
-type=3
-uri=path/to/video1.mp4
-uri=path/to/video2.mp4
-uri=path/to/video3.mp4
-uri=path/to/video4.mp4
-num-sources=4
+### Use a POST /start-stream API to start DeepStream dynamically 
 
 ```
-
-### Run Inference
-```
-deepstream-app -c deepstream_app_config.txt
-```
-### Save all the predictions in a database
-
-```
-sudo apt update
-sudo apt install sqlite3
-```
-
-### Create a new file called, save_predictions_to_db.py.
-
-```
-nano save_predictions_to_db.py
-```
-
-### Paste the following code inside
-```
-import os
-import sqlite3
-
-# Set the path to your predictions folder
-PREDICTIONS_FOLDER = 'predictions'  # Change this if your folder name is different
-
-# 1. Connect to (or create) a SQLite database file
-conn = sqlite3.connect('predictions.db')  # This file will be created in your current directory
-cursor = conn.cursor()
-
-# 2. Create a table if it does not exist already
-cursor.execute('''
-    CREATE TABLE IF NOT EXISTS detections (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        frame_name TEXT,
-        class_name TEXT,
-        x1 REAL,
-        y1 REAL,
-        x2 REAL,
-        y2 REAL,
-        confidence REAL
-    )
-''')
-conn.commit()
-
-# 3. Loop through all .txt files inside the predictions folder
-for filename in sorted(os.listdir(PREDICTIONS_FOLDER)):
-    if filename.endswith('.txt'):
-        frame_name = filename.replace('.txt', '')  # Remove ".txt" from the filename
-        file_path = os.path.join(PREDICTIONS_FOLDER, filename)
-        
-        with open(file_path, 'r') as f:
-            lines = f.readlines()
-            for line in lines:
-                parts = line.strip().split(' ')
-
-                # Make sure there are enough parts in the line
-                if len(parts) >= 16:
-                    class_name = parts[0]
-                    x1 = float(parts[4])
-                    y1 = float(parts[5])
-                    x2 = float(parts[6])
-                    y2 = float(parts[7])
-                    confidence = float(parts[-1])
-
-                    # Insert into the database
-                    cursor.execute('''
-                        INSERT INTO detections (frame_name, class_name, x1, y1, x2, y2, confidence)
-                        VALUES (?, ?, ?, ?, ?, ?, ?)
-                    ''', (frame_name, class_name, x1, y1, x2, y2, confidence))
-
-# 4. Commit and close the database
-conn.commit()
-conn.close()
-
-print('All predictions have been saved successfully into predictions.db')
-
-```
-
-### Save the script as save_predictions_to_db.py and in terminal
-```
-python3 save_predictions_to_db.py
-```
-It will process all .txt files inside predictions/ and save detections to predictions.db.
-
-After running, you will see a new file created "predictions.db"
-
-### View data inside database
-```
-nano view_database.py
-```
-### Paste the following code inside
-```
-import sqlite3
-
-conn = sqlite3.connect('predictions.db')
-cursor = conn.cursor()
-
-for row in cursor.execute('SELECT * FROM detections LIMIT 10'):
-    print(row)
-
-conn.close()
+curl -X POST http://localhost:5000/start-stream      -H "Content-Type: application/json"      -d '{"rtsp_url": "rtsp://rtspstream:-Xb-e9YNYYf7lwpc6n-PR@zephyr.rtsp.stream/people"}'
 ```
 ```
-python3 view_database.py
+curl -X POST http://localhost:5000/start-stream      -H "Content-Type: application/json"      -d '{"rtsp_url": "rtsp://rtspstream:-Xb-e9YNYYf7lwpc6n-PR@zephyr.rtsp.stream/traffic"}'
 ```
-It will print first 10 detections!
-
-### Open .db file online
-Go to [SQLite Viewer](https://sqliteviewer.app/)
+```
+curl -X POST http://localhost:5000/start-stream      -H "Content-Type: application/json"      -d '{"rtsp_url": "http://takemotopiano.aa1.netvolante.jp:8190/nphMotionJpeg?Resolution=640x480&Quality=Standard&Framerate=30"}'
+```
+###  Use a POST /stop-stream API to stop the running stream
+```
+curl -X POST http://localhost:5000/stop-stream
+```
 
 ### DeepStream-YOLO11 Docker Guide
 This guide helps you build and run the Docker container for DeepStream-YOLO11 on Jetson Nano using DeepStream 6.0.1.
@@ -319,51 +210,6 @@ sudo apt install docker.io
 ```
 ```
 sudo apt install nvidia-container-runtime
-```
-### Create Dockerfile
-```
-# Use NVIDIA DeepStream 6.0.1 base image for Jetson Nano
-FROM nvcr.io/nvidia/deepstream-l4t:6.0.1-triton
-
-# Set environment variables
-ENV DEBIAN_FRONTEND=noninteractive
-
-# Install system dependencies
-RUN apt-get update && apt-get install -y \
-    git \
-    python3-pip \
-    python3-opencv \
-    python3-numpy \
-    nano && \
-    rm -rf /var/lib/apt/lists/*
-
-# Set working directory
-WORKDIR /opt/deepstream-yolo11
-
-# Copy everything from local repo into container
-COPY . /opt/deepstream-yolo11/
-
-# Default command to run DeepStream
-CMD ["deepstream-app", "-c", "deepstream_app_config.txt"]
-
-```
-### Save Output to File
-Open the deepstream_app_config.txt file and update [source0] and [sink0]
-```
-[source0]
-enable=1
-type=3
-uri=file:///opt/deepstream-yolo11/video.mp4
-num-sources=1
-gpu-id=0
-cudadec-memtype=0
-
-[sink0]
-enable=1
-type=3
-container=1
-codec=1
-output-file=/opt/deepstream-yolo11/output.mp4
 ```
 
 ### Build Docker Image
